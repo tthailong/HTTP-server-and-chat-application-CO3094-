@@ -20,6 +20,7 @@ based on incoming requests.
 
 The current version supports MIME type detection, content loading and header formatting
 """
+import json
 import datetime
 import os
 import mimetypes
@@ -164,7 +165,7 @@ class Response():
             base_dir = BASE_DIR+"static/"
             self.headers['Content-Type']='image/{}'.format(sub_type)
         elif main_type == 'application':
-            base_dir = BASE_DIR+"apps/"
+            base_dir = BASE_DIR+"db/"
             self.headers['Content-Type']='application/{}'.format(sub_type)
         #
         #  TODO: process other mime_type
@@ -201,6 +202,16 @@ class Response():
             #  TODO: implement the step of fetch the object file
             #        store in the return value of content
             #
+        try:
+            with open(filepath, "rb") as f:
+                content = f.read()
+        except Exception as e:
+            error_obj = {"error": "Error reading file: {}".format(e)}
+            content = json.dumps(error_obj).encode('utf-8')
+        if path == "return.json":
+            # Clear the return.json
+            with open(filepath, "w") as f:
+                f.write("")
         return len(content), content
 
 
@@ -242,6 +253,9 @@ class Response():
             #  TODO: implement the header building to create formated
             #        header from the provied headers
             #
+        fmt_header = ""
+        for key, value in headers.items():
+            fmt_header += "{}: {}\r\n".format(key, value)
         #
         # TODO prepare the request authentication
         #
@@ -292,10 +306,13 @@ class Response():
         #
         # TODO: add support objects
         #
+        elif mime_type == 'application/octet-stream':
+            base_dir = self.prepare_content_type(mime_type = 'application/json')
+            path = "return.json"
         else:
             return self.build_notfound()
 
         c_len, self._content = self.build_content(path, base_dir)
         self._header = self.build_response_header(request)
 
-        return self._header + self._content
+        return self._header + "\r\n".encode('utf-8') + self._content

@@ -107,18 +107,26 @@ class HttpAdapter:
         req.prepare(msg, routes)
 
         # Handle request hook
+        status = ""
         if req.hook:
+            headers = ""
+            body = ""
+            if "\r\n\r\n" in msg:
+                msg = msg.split("\r\n\r\n")
+                headers = msg[0]
+                body = msg[1]
+            else:
+                headers = msg
             print("[HttpAdapter] hook in route-path METHOD {} PATH {}".format(req.hook._route_path,req.hook._route_methods))
-            req.hook(headers = "bksysnet",body = "get in touch")
+            status = req.hook(headers = headers,body = body)
             #
             # TODO: handle for App hook here
             #
 
         # Build response
         response = resp.build_response(req)
-
-        #print(response)
-        conn.sendall(response)
+        if not status: status = "HTTP/1.1 200 OK\r\n"
+        conn.sendall(status.encode('utf-8') + response)
         conn.close()
 
     @property
