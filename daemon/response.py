@@ -20,7 +20,6 @@ based on incoming requests.
 
 The current version supports MIME type detection, content loading and header formatting
 """
-import json
 import datetime
 import os
 import mimetypes
@@ -155,17 +154,18 @@ class Response():
         print("[Response] processing MIME main_type={} sub_type={}".format(main_type,sub_type))
         if main_type == 'text':
             self.headers['Content-Type']='text/{}'.format(sub_type)
-            if sub_type == 'plain' or sub_type == 'css':
+            if sub_type == 'plain' or sub_type == 'css' or sub_type == 'csv' or sub_type == 'xml':
                 base_dir = BASE_DIR+"static/"
             elif sub_type == 'html':
                 base_dir = BASE_DIR+"www/"
             else:
-                handle_text_other(sub_type)
+                base_dir = BASE_DIR+"static/"
+                #handle_text_other(sub_type) dummy from teacher?
         elif main_type == 'image':
             base_dir = BASE_DIR+"static/"
             self.headers['Content-Type']='image/{}'.format(sub_type)
         elif main_type == 'application':
-            base_dir = BASE_DIR+"db/"
+            base_dir = BASE_DIR+"apps/"
             self.headers['Content-Type']='application/{}'.format(sub_type)
         #
         #  TODO: process other mime_type
@@ -179,6 +179,13 @@ class Response():
         #        video/mpeg
         #        ...
         #
+            if sub_type == 'xml' or sub_type == 'zip':
+                base_dir = BASE_DIR+"application/"
+        elif main_type == 'video':
+            base_dir = BASE_DIR+"static/"
+            self.headers['Content-Type']='video/{}'.format(sub_type)
+            if sub_type == 'mp4' or sub_type == 'mpeg':
+                base_dir = BASE_DIR+"video/"
         else:
             raise ValueError("Invalid MEME type: main_type={} sub_type={}".format(main_type,sub_type))
 
@@ -194,9 +201,8 @@ class Response():
 
         :rtype tuple: (int, bytes) representing content length and content data.
         """
-
+    
         filepath = os.path.join(base_dir, path.lstrip('/'))
-
         print("[Response] serving the object at location {}".format(filepath))
             #
             #  TODO: implement the step of fetch the object file
@@ -205,14 +211,14 @@ class Response():
         try:
             with open(filepath, "rb") as f:
                 content = f.read()
+            return len(content), content
+        except FileNotFoundError:
+            print("[Response] file not found {}".format(filepath))
+            return 0,None
         except Exception as e:
-            error_obj = {"error": "Error reading file: {}".format(e)}
-            content = json.dumps(error_obj).encode('utf-8')
-        if path == "return.json":
-            # Clear the return.json
-            with open(filepath, "w") as f:
-                f.write("")
-        return len(content), content
+            print("[Response] cant read the file {}".format(filepath))
+            return 0,None
+        
 
 
     def build_response_header(self, request):
@@ -240,6 +246,8 @@ class Response():
         # TODO prepare the request authentication
         #
 	# self.auth = ...
+                
+                    
                 "Date": "{}".format(datetime.datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")),
                 "Max-Forward": "10",
                 "Pragma": "no-cache",
@@ -253,14 +261,27 @@ class Response():
             #  TODO: implement the header building to create formated
             #        header from the provied headers
             #
-        fmt_header = ""
-        for key, value in headers.items():
-            fmt_header += "{}: {}\r\n".format(key, value)
         #
         # TODO prepare the request authentication
         #
 	# self.auth = ...
+
+        authorize = request.auth
+        if not authorize:
+            self.status_code = 401
+            self.reason = "Unauthorized page"
+        else:
+            #case set-cookie: auth=true
+            self.cookies["auth"]="true"
+            headers["Set-Cookie"] = "auth=true"
+            self.status_code = 200
+            self.reason = "OK"
+        status_line = f"HTTP/1.1 {self.status_code} {self.reason}\r\n"
+        header_lines = "".join(f"{k}: {v}\r\n" for k, v in self.headers.items())
+        fmt_header = status_line + header_lines + "\r\n"
         return str(fmt_header).encode('utf-8')
+        # Build header string
+
 
 
     def build_notfound(self):
@@ -303,16 +324,41 @@ class Response():
             base_dir = self.prepare_content_type(mime_type = 'text/html')
         elif mime_type == 'text/css':
             base_dir = self.prepare_content_type(mime_type = 'text/css')
+        elif mime_type == 'text/csv':
+            base_dir = self.prepare_content_type(mime_type = 'text/csv')
+        elif mime_type == 'text/xml':
+            base_dir = self.prepare_content_type(mime_type = 'text/xml')
+        elif mime_type.startswith('image/'):
+            base_dir = self.prepare_content_type(mime_type=mime_type)
+        elif mime_type == 'application/xml':
+            base_dir = self.prepare_content_type(mime_type = 'application/xml')
+        elif mime_type == 'application/zip':
+            base_dir = self.prepare_content_type(mime_type = 'application/zip')
+        elif mime_type == 'video/mp4':
+            base_dir = self.prepare_content_type(mime_type = 'video/mp4')
+        elif mime_type == 'video/mpeg':
+            base_dir = self.prepare_content_type(mime_type = 'video/mpeg')
         #
         # TODO: add support objects
         #
-        elif mime_type == 'application/octet-stream':
-            base_dir = self.prepare_content_type(mime_type = 'application/json')
-            path = "return.json"
         else:
             return self.build_notfound()
 
         c_len, self._content = self.build_content(path, base_dir)
         self._header = self.build_response_header(request)
 
-        return self._header + "\r\n".encode('utf-8') + self._content
+        # === ADDED DEBUGGING BLOCK ===
+        print("--- DEBUG: CONTENT CHECK ---")
+        print(f"Content Length (c_len): {c_len}")
+        
+        # Print content in readable form (use .decode for text, or show bytes for binary)
+        if c_len > 0:
+            if mime_type.startswith('text'):
+                print(f"Content Sample (Decoded): {self._content[:100].decode(errors='ignore')}...")
+            else:
+                print(f"Content Sample (Bytes): {self._content[:50]}...")
+        else:
+            print("Content is EMPTY or None.")
+        print("----------------------------")
+        # =============================
+        return self._header + self._content

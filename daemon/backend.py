@@ -90,11 +90,12 @@ def run_backend(ip, port, routes):
             #        using multi-thread programming with the
             #        provided handle_client routine
             #
-            nconn = threading.Thread(
-                target = handle_client, 
-                args = (ip, port, conn, addr, routes)
+            client_thread = threading.Thread(
+                target=handle_client,
+                args=(ip, port, conn, addr, routes)
             )
-            nconn.start()
+            client_thread.daemon = True  # Thread will die when main program exits
+            client_thread.start()
     except socket.error as e:
       print("Socket error: {}".format(e))
 

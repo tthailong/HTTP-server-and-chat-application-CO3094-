@@ -106,27 +106,21 @@ class HttpAdapter:
         msg = conn.recv(1024).decode()
         req.prepare(msg, routes)
 
+        #tu them de check
+        #req.path = '/index.html'
         # Handle request hook
-        status = ""
         if req.hook:
-            headers = ""
-            body = ""
-            if "\r\n\r\n" in msg:
-                msg = msg.split("\r\n\r\n")
-                headers = msg[0]
-                body = msg[1]
-            else:
-                headers = msg
-            print("[HttpAdapter] hook in route-path METHOD {} PATH {}".format(req.hook._route_path,req.hook._route_methods))
-            status = req.hook(headers = headers,body = body)
+            print("[HttpAdapter] hook in route-path METHOD {} PATH {}".format(req.hook._route_path,req.hook._route_methods)) # o day bi nguoc ha ta?
+            req.hook(headers = "bksysnet",body = "get in touch")
             #
             # TODO: handle for App hook here
             #
 
         # Build response
         response = resp.build_response(req)
-        if not status: status = "HTTP/1.1 200 OK\r\n"
-        conn.sendall(status.encode('utf-8') + response)
+
+        #print(response)
+        conn.sendall(response)
         conn.close()
 
     @property
@@ -139,7 +133,7 @@ class HttpAdapter:
         :rtype: cookies - A dictionary of cookie key-value pairs.
         """
         cookies = {}
-        for header in headers:
+        for header in req.headers:
             if header.startswith("Cookie:"):
                 cookie_str = header.split(":", 1)[1].strip()
                 for pair in cookie_str.split(";"):
@@ -157,7 +151,7 @@ class HttpAdapter:
         response = Response()
 
         # Set encoding.
-        response.encoding = get_encoding_from_headers(response.headers)
+        response.encoding = 'utf-8'#get_encoding_from_headers(response.headers)
         response.raw = resp
         response.reason = response.raw.reason
 
@@ -167,7 +161,7 @@ class HttpAdapter:
             response.url = req.url
 
         # Add new cookies from the server.
-        response.cookies = extract_cookies(req)
+        response.cookies = self.extract_cookies(req,resp)
 
         # Give the Response some context.
         response.request = req

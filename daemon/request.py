@@ -40,7 +40,7 @@ class Request():
         "method",
         "url",
         "headers",
-        "body",
+        "path", #:ban dau la body, sua lai thanh path
         "reason",
         "cookies",
         "body",
@@ -77,7 +77,7 @@ class Request():
         except Exception:
             return None, None
 
-        return method, path, version
+        return method, path, version # Example: "GET / HTTP/1.1" become return(GET, /index.html, HTTP/1.1)
              
     def prepare_headers(self, request):
         """Prepares the given HTTP headers."""
@@ -93,7 +93,7 @@ class Request():
         """Prepares the entire request with the given parameters."""
 
         # Prepare the request line from the request header
-        self.method, self.path, self.version = self.extract_request_line(request)
+        self.method, self.path, self.version = self.extract_request_line(request) # get method, path and version from first line: GET /test1/ HTTP/1.1
         print("[Request] {} path {} version {}".format(self.method, self.path, self.version))
 
         #
@@ -103,9 +103,35 @@ class Request():
         # TODO manage the webapp hook in this mounting point
         #
         
+        #POST /1/2/forms2.php HTTP/1.1
+        #Host: www.httprecipes.com
+        #User-Agent: Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.13) Gecko/20080311 Fir
+        #Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,ima
+        #Accept-Language: en-us;q=0.5
+        #Accept-Encoding: gzip,deflate
+        #Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+        #Keep-Alive: 300
+        #Connection: keep-alive
+        #Referer: http://www.httprecipes.com/1/2/forms.php
+        #Cookie: test-cookie=MikesSuperBigCookie
+        #Content-Type: application/x-www-form-urlencoded
+        #Content-Length: 22
+
+        #GET /test1/ HTTP/1.1
+        #Host: www.bksysnet.edu
+        #User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:143.0) Gecko/20100101 Firefox/143.0
+        #Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+        #Accept-Language: en-US,en;q=0.5
+        #Accept-Encoding: gzip, deflate
+        #Authorization: Basic dGM6dGM=
+        #Connection: keep-alive
+        #Upgrade-Insecure-Requests: 1
+        #Priority: u=0, i
+
+
         if not routes == {}:
             self.routes = routes
-            self.hook = routes.get((self.method, self.path))
+            self.hook = routes.get((self.method, self.path)) # this will give the destination function ("GET", "/index.html") → home_handler => req.hook = home_handler
             #
             # self.hook manipulation goes here
             # ...
@@ -116,16 +142,69 @@ class Request():
             #
             #  TODO: implement the cookie function here
             #        by parsing the header            #
+        
+        #self.prepare_cookies(self.cookies) #format from {"auth=true",...} to {"auth":"true",...}
+        self.cookies = {}
+        if cookies:
+            for pair in cookies.split(';'):
+                if '=' in pair:
+                    key, value = pair.strip().split('=', 1)
+                    self.cookies[key] = value #get the value of auth
+            self.prepare_cookies(cookies)
+        
+
+        
+        parts = request.split("\r\n\r\n", 1) #seperate header with body
+        if len(parts) > 1:
+            body = parts[1]
+        self.prepare_body(body,None,None) #now we still not handle multipara?
+
+        if self.method=="POST" and self.path == "/login":
+            self.prepare_auth(self.body,self.path)    
+        else:
+            self.auth=True #dummy authorize for checking index page
+            #self.auth=False
+            if self.cookies.get("auth","")=="true":
+                self.auth=True
+            
+
 
         return
 
     def prepare_body(self, data, files, json=None):
-        self.prepare_content_length(self.body)
-        self.body = body
+        
+        """
+        Prepares the request body and sets the appropriate Content-Type and Content-Length headers.
+        Handles three cases: JSON, form data, and files (multipart).
+        """
+        if json is not None:
+            # Case 1: JSON body (assume already a string or use str())
+            self.body = str(json)
+            self.headers["Content-Type"] = "application/json"
+        elif files is not None:
+            # Case 3: Files (multipart/form-data) - placeholder
+            boundary = "----WeApRousBoundary"
+            self.headers["Content-Type"] = f"multipart/form-data; boundary={boundary}"
+            self.body = data if data else ""
+        elif data is not None:
+            # Case 2: Form data or raw
+            if isinstance(data, dict):
+                # Manual urlencoding: key1=val1&key2=val2
+                self.body = "&".join(f"{k}={v}" for k, v in data.items())
+                self.headers["Content-Type"] = "application/x-www-form-urlencoded"
+            elif isinstance(data, bytes):
+                self.body = data
+            else:
+                self.body = str(data)
+                self.headers.setdefault("Content-Type", "text/plain")
+        else:
+            # No body provided, keep as is (could be set from earlier parsing)
+            pass
         #
         # TODO prepare the request authentication
         #
 	# self.auth = ...
+        self.prepare_content_length(self.body)
         return
 
 
@@ -135,6 +214,11 @@ class Request():
         # TODO prepare the request authentication
         #
 	# self.auth = ...
+        if body is not None:
+            if isinstance(body, str):
+                self.headers["Content-Length"] = str(len(body.encode('utf-8')))
+            else:
+                self.headers["Content-Length"] = str(len(body))
         return
 
 
@@ -142,7 +226,18 @@ class Request():
         #
         # TODO prepare the request authentication
         #
-	# self.auth = ...
+        self.auth = False
+        if url:
+            self.url=url
+        if auth != "":
+            params = {}
+            for pair in auth.split("&"):
+                if "=" in pair:
+                    key, value = pair.split("=", 1)
+                    params[key] = value # for ex: username=long&password=123 become username: long, password: 123
+            if url=="/login" and params[0]=="admin" and params[1]=="password":
+                self.auth=True  
+                self.prepare_cookies("auth=true")
         return
 
     def prepare_cookies(self, cookies):
