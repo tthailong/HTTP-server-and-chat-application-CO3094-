@@ -31,3 +31,41 @@ img {
 	border-radius: 8px;
 	margin-top: 20px;
 }
+
+/* ============================================================== */
+input {
+padding: 10px;
+margin: 5px 0;
+width: 100%;
+}
+
+
+button {
+padding: 10px 20px;
+margin-top: 10px;
+cursor: pointer;
+}
+
+
+#popup {
+position: fixed;
+top: 20px;
+right: 20px;
+color: white;
+padding: 10px 20px;
+border-radius: 5px;
+display: none;
+}
+
+
+table {
+width: 100%;
+border-collapse: collapse;
+margin-top: 20px;
+}
+
+
+th, td {
+padding: 10px;
+border: 1px solid #ddd;
+}
