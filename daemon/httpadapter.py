@@ -135,10 +135,12 @@ class HttpAdapter:
         if req.method == "GET" and req.path in protected_paths:
             auth = req.cookies.get("auth")
             if not auth:
-                # user is NOT authenticated => force login
-                req.path = "/login.html"
-                resp.status_code = 200
-                resp.reason = "OK"
+                # user is NOT authenticated 
+                if req.path == "/login":
+                    req.path = "/login.html"
+                else:
+                    conn.sendall(resp.build_unauthorized())
+                    conn.close()
             else:         
                 req.path = "/index.html"  
 
