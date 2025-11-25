@@ -147,9 +147,22 @@ class HttpAdapter:
 
         # Handle request hook
         if req.hook:
+<<<<<<< HEAD
             print("[HttpAdapter] hook in route-path METHOD {} PATH {}".format(req.hook._route_path,req.hook._route_methods)) # o day bi nguoc ha ta?
 
             #req.hook(headers = "bksysnet",body = "get in touch")
+=======
+            headers = ""
+            body = ""
+            if "\r\n\r\n" in msg:
+                msg = msg.split("\r\n\r\n")
+                headers = msg[0]
+                body = msg[1]
+            else:
+                headers = msg
+            print("[HttpAdapter] hook in route-path METHOD {} PATH {}".format(req.hook._route_path,req.hook._route_methods))
+            resp.status_code, resp.reason = req.hook(headers = headers,body = body)
+>>>>>>> 12afd19cf3206a9112288810a719c4fece2ca85a
             #
             # TODO: handle for App hook here
             #
@@ -158,8 +171,11 @@ class HttpAdapter:
         # Build response
         response = resp.build_response(req)
 
+<<<<<<< HEAD
 
         #print(response)
+=======
+>>>>>>> 12afd19cf3206a9112288810a719c4fece2ca85a
         conn.sendall(response)
         conn.close()
 

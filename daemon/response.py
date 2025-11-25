@@ -211,13 +211,22 @@ class Response():
         try:
             with open(filepath, "rb") as f:
                 content = f.read()
+            if path == "return.json":
+                # Clear the return.json
+                with open(filepath, "w") as f:
+                    f.write("")
             return len(content), content
         except FileNotFoundError:
             print("[Response] file not found {}".format(filepath))
             return 0, b""
         except Exception as e:
+<<<<<<< HEAD
             print("[Response] cant read the file {}".format(filepath))
             return 0, b""
+=======
+            print("[Response] can't read the file {}".format(filepath))
+            return 0,None
+>>>>>>> 12afd19cf3206a9112288810a719c4fece2ca85a
         
 
 
@@ -265,7 +274,21 @@ class Response():
         # TODO prepare the request authentication
         #
 
+<<<<<<< HEAD
         # Status line
+=======
+        authorize = request.auth
+        if not authorize:
+            self.status_code = 401
+            self.reason = "Unauthorized page"
+        else:
+            #case set-cookie: auth=true
+            self.cookies["auth"]="true"
+            headers["Set-Cookie"] = "auth=true"
+            if not self.status_code: 
+                self.status_code = 200
+                self.reason = "OK"
+>>>>>>> 12afd19cf3206a9112288810a719c4fece2ca85a
         status_line = f"HTTP/1.1 {self.status_code} {self.reason}\r\n"
 
         # Header lines (use the complete 'headers' dictionary)
@@ -347,6 +370,9 @@ class Response():
         #
         # TODO: add support objects
         #
+        elif mime_type == 'application/octet-stream':
+            base_dir = self.prepare_content_type(mime_type = 'application/json')
+            path = "return.json"
         else:
             return self.build_notfound()
         

@@ -70,27 +70,27 @@ def print_input(headers, body):
 
 def handle_error(e):
     print("[Tracker] ERROR: {}".format(e))
-    with open("db/return.json", "w") as f:
+    with open("apps/return.json", "w") as f:
         json.dump({'error': str(e)}, f, indent=4)
-    return "HTTP/1.1 500 Internal Server Error\r\n"
+    return 500, "Internal Server Error"
 
 @app.route("/", methods=["GET"])
 def home(headers, body):
-    return "HTTP/1.1 200 OK\r\n" #{"message": "Welcome to the RESTful TCP WebApp"}
+    return 200, "OK" #{"message": "Welcome to the RESTful TCP WebApp"}
 
 @app.route("/user", methods=["GET"])
 def get_user(headers, body):
-    with open("db/return.json", "w") as f:
+    with open("apps/return.json", "w") as f:
         json.dump({"id": 1, "name": "Alice", "email": "alice@example.com"}, f, indent=4)
-    return "HTTP/1.1 200 OK\r\n"
+    return 200, "OK"
 
 @app.route("/echo", methods=["POST"])
 def echo(headers, body):
     try:
         data = json.loads(body)
-        with open("db/return.json", "w") as f:
+        with open("apps/return.json", "w") as f:
             json.dump({"received": data}, f, indent=4)
-        return "HTTP/1.1 200 OK\r\n"
+        return 200, "OK"
     except json.JSONDecodeError:
         return {"error": "Invalid JSON"}
     
@@ -105,9 +105,9 @@ def submit_info(headers, body):
         
         if not (peer_ip and peer_port):
             print("[Tracker] ERROR: Missing ip or port")
-            with open("db/return.json", "w") as f:
+            with open("apps/return.json", "w") as f:
                 json.dump({'error': 'Missing ip or port'}, f, indent=4)
-            return "HTTP/1.1 400 Bad Request\r\n"
+            return 400, "Bad Request"
         
         peer_id = "{}:{}".format(peer_ip, peer_port)
         peer_list[peer_id] = {
@@ -117,9 +117,9 @@ def submit_info(headers, body):
         }
         print("[Tracker] Registered: {}".format(peer_id))
         
-        with open("db/return.json", "w") as f:
+        with open("apps/return.json", "w") as f:
             json.dump({'peer_id': peer_id}, f, indent=4)
-        return "HTTP/1.1 200 OK\r\n"
+        return 200, "OK"
         
     except Exception as e:
         return handle_error(e)
@@ -130,13 +130,13 @@ def get_list(headers, body):
     print_input(headers, body)
     try:
         print("[Tracker] Current peer list {}".format(len(peer_list)))
-        with open("db/return.json", "w") as f:
+        with open("apps/return.json", "w") as f:
             json.dump({
                 'peer_list': peer_list,
                 'length': len(peer_list)},
                 f, indent=4
             )
-        return "HTTP/1.1 200 OK\r\n"
+        return 200, "OK"
         
     except Exception as e:
         return handle_error(e)
@@ -152,24 +152,24 @@ def add_list(headers, body):
         
         if not (peer_ip and peer_port):
             print("[Tracker] ERROR: Missing ip or port")
-            with open("db/return.json", "w") as f:
+            with open("apps/return.json", "w") as f:
                 json.dump({'error': 'Missing ip or port'}, f, indent=4)
-            return "HTTP/1.1 400 Bad Request\r\n"
+            return 400, "Bad Request"
         
         peer_id = "{}:{}".format(peer_ip, peer_port)
         if peer_id not in peer_list:
             print("[Tracker] ERROR: ID {} haven't registerd yet".format(peer_id))
-            with open("db/return.json", "w") as f:
+            with open("apps/return.json", "w") as f:
                 json.dump({'error': "[Tracker] ERROR: ID {} haven't registerd yet".format(peer_id)}, f, indent=4)
-            return "HTTP/1.1 400 Bad Request\r\n"
+            return 400, "Bad Request"
             
         
         peer_list[peer_id]['active'] = True
         print("[Tracker] Active: {}".format(peer_id))
         
-        with open("db/return.json", "w") as f:
+        with open("apps/return.json", "w") as f:
             json.dump({'peer_info': peer_list[peer_id]}, f, indent=4)
-        return "HTTP/1.1 200 OK\r\n"
+        return 200, "OK"
         
     except Exception as e:
         return handle_error(e)
@@ -185,7 +185,7 @@ if __name__ == "__main__":
     port = args.server_port
 
     # Clear the return.json
-    with open("db/return.json", "w") as f:
+    with open("apps/return.json", "w") as f:
         f.write("")
 
 
