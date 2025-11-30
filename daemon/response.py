@@ -222,9 +222,7 @@ class Response():
         except Exception as e:
             print("[Response] cant read the file {}".format(filepath))
             return 0, b""
-
         
-
 
     def build_response_header(self, request):
         """

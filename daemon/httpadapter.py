@@ -141,13 +141,27 @@ class HttpAdapter:
                 else:
                     conn.sendall(resp.build_unauthorized())
                     conn.close()
+                    return
             else:         
                 req.path = "/index.html"  
 
+        #TASK 2.1: Handle the auth for the API
+        protected_tracker_API = ["/submit-info","/add-list", "/remove", "/get-list"]
+
+        if req.path in protected_tracker_API:
+            auth = req.cookies.get("auth")
+            if not auth:
+                # user is NOT authenticated 
+                req.hook = None
+                if req.path == "/login":
+                    req.path = "/login.html"
+                else:
+                    conn.sendall(resp.build_unauthorized())
+                    conn.close()
+                    return
 
         # Handle request hook
         if req.hook:
-
             print("[HttpAdapter] hook in route-path METHOD {} PATH {}".format(req.hook._route_path,req.hook._route_methods)) # o day bi nguoc ha ta?
 
             #req.hook(headers = "bksysnet",body = "get in touch")
@@ -170,9 +184,7 @@ class HttpAdapter:
         response = resp.build_response(req)
 
 
-
         #print(response)
-
         conn.sendall(response)
         conn.close()
 
